@@ -93,7 +93,7 @@ async def get_book_info(url, session):
                 introduce_datas = ['']
 
             result_list = [pk, book_name, auth_list[0], publish, date, pricese[0], pricese[1], *category_datas, introduce_datas[0]]
-            print(result_list)
+            
             return result_list
         else:
             raise Exception(f"요청 실패. 응답코드: {res.status_code}")
@@ -106,7 +106,7 @@ async def main(links):
 
 if __name__ == '__main__':
 
-    os.chdir(r'C:\classes\project2\OBC')
+    os.chdir(r'C:\project\DA35-2nd-SMJ-OBC\OBC')
     os.makedirs('Datas/best_seller_datas', exist_ok=True)
     os.makedirs('Datas/month_seller_datas', exist_ok=True)
     os.makedirs('Datas/steady_seller_datas', exist_ok=True)
@@ -116,10 +116,10 @@ if __name__ == '__main__':
     best_seller_datas = asyncio.run(main(best_seller_links))
     
 
-    # best_df = pd.DataFrame(best_seller_datas)
-    # d = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    # best_file_path = f"Datas/best_seller_datas/{d}.csv"
-    # best_df.to_csv(best_file_path, index=False)
+    best_df = pd.DataFrame(best_seller_datas)
+    d = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    best_file_path = f"Datas/best_seller_datas/{d}.csv"
+    best_df.to_csv(best_file_path, index=False , encoding='ANSI')
 
 '''
     month_pages = ['https://www.yes24.com/Product/Category/MonthWeekBestSeller?categoryNumber='+str(x)+'&pageSize=24' for x in range(1,3)]
