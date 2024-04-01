@@ -16,6 +16,7 @@ month_seller_main = 'https://www.yes24.com/Product/Category/MonthWeekBestSeller?
 steady_seller_main = 'https://www.yes24.com/Product/Category/SteadySeller?categoryNumber=001&pageSize=24'
 
 book_selector = '#yesBestList > li > div > div.item_info > div.info_row.info_name > a.gd_name'
+rank_selector = '#yesBestList > li > div > div.item_img > div.img_canvas > div > em'
 book_name_selector= "#yDetailTopWrap > div.topColRgt > div.gd_infoTop > div > h2"
 auth_selector = "#yDetailTopWrap > div.topColRgt > div.gd_infoTop > span.gd_pubArea > span.gd_auth"
 publish_selector = "#yDetailTopWrap > div.topColRgt > div.gd_infoTop > span.gd_pubArea > span.gd_pub"
@@ -33,20 +34,24 @@ def get_book_url(links):
         if res.status_code == 200:
             soup = BeautifulSoup(res.text, "lxml")
             book_list = soup.select(book_selector)
+            rank_list = soup.select(rank_selector)
             result_list = []
-            for book in book_list:
+            for book, ranks in zip(book_list, rank_list):
                 link = book.get("href")  # href 속성 값
-                result_list.append('https://www.yes24.com/'+link)
+                rank = ranks.get_text()
+                result_list.append(('https://www.yes24.com/'+link,int(rank)))
+        
         else:
             raise Exception(f"요청 실패. 응답코드: {res.status_code}")
     return result_list
 
 async def get_book_info(url, session):
-    async with session.get(url) as res:
+    async with session.get(url[0]) as res:
         if res.status == 200:
-            pk = url.split('/')[-1]
+            pk = url[0].split('/')[-1]
             html = await res.text()
             soup = BeautifulSoup(html, "lxml")
+            rank = url[1]
 
             book_name = soup.select(book_name_selector)[0].get_text()
 
@@ -63,7 +68,6 @@ async def get_book_info(url, session):
             pricese = []
             for p in price_list:
                 pricese.append(p.get_text().replace(',','').replace('원',''))
-
 
             category_list = soup.select(category_selector)
             category_datas = ['']*4
@@ -92,7 +96,7 @@ async def get_book_info(url, session):
             if introduce_datas == []:
                 introduce_datas = ['']
 
-            result_list = [pk, book_name, auth_list[0], publish, date, pricese[0], pricese[1], *category_datas, introduce_datas[0]]
+            result_list = [pk, rank, book_name, auth_list[0], publish, date, int(pricese[0]), int(pricese[1]), *category_datas, introduce_datas[0]]
             
             return result_list
         else:
@@ -106,12 +110,12 @@ async def main(links):
 
 if __name__ == '__main__':
 
-    os.chdir(r'C:\project\DA35-2nd-SMJ-OBC\OBC')
+    os.chdir(r'C:\Projects\DA35 2nd project\DA35-2nd-SMJ-OBC\OBC')
     os.makedirs('Datas/best_seller_datas', exist_ok=True)
     os.makedirs('Datas/month_seller_datas', exist_ok=True)
     os.makedirs('Datas/steady_seller_datas', exist_ok=True)
 
-    best_pages = ['https://www.yes24.com/Product/Category/BestSeller?categoryNumber='+str(x)+'&pageSize=24' for x in range(1,3)]
+    best_pages = ['https://www.yes24.com/Product/Category/BestSeller?categoryNumber='+str(x)+'&pageSize=24' for x in range(1,2)]
     best_seller_links = get_book_url(best_pages)
     best_seller_datas = asyncio.run(main(best_seller_links))
     
@@ -119,7 +123,7 @@ if __name__ == '__main__':
     best_df = pd.DataFrame(best_seller_datas)
     d = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     best_file_path = f"Datas/best_seller_datas/{d}.csv"
-    best_df.to_csv(best_file_path, index=False , encoding='ANSI')
+    best_df.to_csv(best_file_path, index=False)
 
 '''
     month_pages = ['https://www.yes24.com/Product/Category/MonthWeekBestSeller?categoryNumber='+str(x)+'&pageSize=24' for x in range(1,3)]
