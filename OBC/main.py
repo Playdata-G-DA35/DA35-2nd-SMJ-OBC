@@ -152,3 +152,13 @@ if __name__ == '__main__':
 '''
 
     
+from sqlalchemy import create_engine
+import pymysql
+import pandas as pd
+db_connection_str = 'mysql+pymysql://playdata:1111@127.0.0.1:3306/obc'
+db_connection = create_engine(db_connection_str)
+conn = db_connection.connect()
+columns_name = ['책ID','순위','책제목','작가','출판사','출판일','정가','판매가','카테고리1-1','카테고리1-2','카테고리2-1','카테고리2-2','책소개']
+best_df.columns = columns_name
+best_df.to_sql(name='best_obc', con=db_connection, if_exists='replace',index=False )  
+
