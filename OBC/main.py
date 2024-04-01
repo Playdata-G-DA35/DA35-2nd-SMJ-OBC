@@ -5,15 +5,17 @@ import pandas as pd
 import asyncio
 import aiohttp
 import os
+import random
 from datetime import datetime
 from bs4 import BeautifulSoup
+import random
 
 
 user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
 
-best_seller_main = 'https://www.yes24.com/Product/Category/BestSeller?categoryNumber=001&pageSize=24'
-month_seller_main = 'https://www.yes24.com/Product/Category/MonthWeekBestSeller?categoryNumber=001&pageSize=24'
-steady_seller_main = 'https://www.yes24.com/Product/Category/SteadySeller?categoryNumber=001&pageSize=24'
+# best_seller_main = 'https://www.yes24.com/Product/Category/BestSeller?categoryNumber=001&pageSize=25'
+# month_seller_main = 'https://www.yes24.com/Product/Category/MonthWeekBestSeller?categoryNumber=001&pageSize=25'
+# steady_seller_main = 'https://www.yes24.com/Product/Category/SteadySeller?categoryNumber=001&pageSize=25'
 
 book_selector = '#yesBestList > li > div > div.item_info > div.info_row.info_name > a.gd_name'
 rank_selector = '#yesBestList > li > div > div.item_img > div.img_canvas > div > em'
@@ -24,9 +26,6 @@ date_selector = "#yDetailTopWrap > div.topColRgt > div.gd_infoTop > span.gd_pubA
 price_selector = "#yDetailTopWrap > div.topColRgt > div.gd_infoBot > div.gd_infoTbArea > div > table > tbody > tr > td > span > em"
 category_selector = '#infoset_goodsCate > div.infoSetCont_wrap > dl:nth-child(1) > dd > ul'
 introduce_selector = '#infoset_introduce > div.infoSetCont_wrap'
-
-test_get_url_list = [best_seller_main, month_seller_main, steady_seller_main]
-test_list = ['https://www.yes24.com/Product/Goods/124999476', 'https://www.yes24.com/Product/Goods/125558276', 'https://www.yes24.com/Product/Goods/122120495']
 
 def get_book_url(links):
     for l in links:     
@@ -98,6 +97,7 @@ async def get_book_info(url, session):
 
             result_list = [pk, rank, book_name, auth_list[0], publish, date, int(pricese[0]), int(pricese[1]), *category_datas, introduce_datas[0]]
             
+            #time.sleep(random.random()*3)
             return result_list
         else:
             raise Exception(f"요청 실패. 응답코드: {res.status_code}")
@@ -114,41 +114,47 @@ if __name__ == '__main__':
     os.makedirs('Datas/best_seller_datas', exist_ok=True)
     os.makedirs('Datas/month_seller_datas', exist_ok=True)
     os.makedirs('Datas/steady_seller_datas', exist_ok=True)
-
-    best_pages = ['https://www.yes24.com/Product/Category/BestSeller?categoryNumber='+str(x)+'&pageSize=24' for x in range(1,2)]
+    
+    best_pages = ['https://www.yes24.com/Product/Category/BestSeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,4)]
     best_seller_links = get_book_url(best_pages)
     best_seller_datas = asyncio.run(main(best_seller_links))
-    
-
     best_df = pd.DataFrame(best_seller_datas)
+
+    month_pages = ['https://www.yes24.com/Product/Category/MonthWeekBestSeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,4)]
+    month_seller_links = get_book_url(month_pages)
+    month_seller_datas = asyncio.run(main(month_seller_links))
+    month_df = pd.DataFrame(month_seller_datas)
+
+    steady_pages = ['https://www.yes24.com/Product/Category/SteadySeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,4)]
+    steady_seller_links = get_book_url(steady_pages)
+    steady_seller_datas = asyncio.run(main(steady_seller_links))
+    steady_df = pd.DataFrame(steady_seller_datas)
+
+    ##### 파일로 저장.
+
     d = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
     best_file_path = f"Datas/best_seller_datas/{d}.csv"
     best_df.to_csv(best_file_path, index=False)
 
-'''
-    month_pages = ['https://www.yes24.com/Product/Category/MonthWeekBestSeller?categoryNumber='+str(x)+'&pageSize=24' for x in range(1,3)]
-    month_seller_links = get_book_url(month_pages)
-    month_seller_datas = asyncio.run(main(month_seller_links))
-
-    month_df = pd.DataFrame(month_seller_datas)
-
-    steady_pages = ['https://www.yes24.com/Product/Category/SteadySeller?categoryNumber='+str(x)+'&pageSize=24' for x in range(1,3)]
-    steady_seller_links = get_book_url(steady_pages)
-    steady_seller_datas = asyncio.run(main(steady_seller_links))
-
-    steady_df = pd.DataFrame(steady_seller_datas)
-'''
-    
-
-'''
-    ##### 파일로 저장.
-    
-
-    month_file_path = f"Datas/month_seller_datas'{d}.csv"
+    month_file_path = f"Datas/month_seller_datas/{d}.csv"
     month_df.to_csv(month_file_path, index=False)
 
-    steady_file_path = f"Datas/steady_seller_datas'{d}.csv"
+    steady_file_path = f"Datas/steady_seller_datas/{d}.csv"
     steady_df.to_csv(steady_file_path, index=False)
-'''
 
-    
+    from sqlalchemy import create_engine
+    import pandas as pd
+
+    db_connection_str = 'mysql+pymysql://playdata:1111@127.0.0.1:3306/obc'
+    db_connection = create_engine(db_connection_str)
+    conn = db_connection.connect()
+    columns_name = ['책ID','순위','책제목','작가','출판사','출판일','정가','판매가','카테고리1-1','카테고리1-2','카테고리2-1','카테고리2-2','책소개']
+    best_df.columns = columns_name
+    best_df.to_sql(name='best_obc', con=db_connection, if_exists='replace',index=False )
+    month_df.columns = columns_name
+    month_df.to_sql(name='month_obc', con=db_connection, if_exists='replace',index=False )
+    steady_df.columns = columns_name
+    steady_df.to_sql(name='steady_obc', con=db_connection, if_exists='replace',index=False )
+
+
