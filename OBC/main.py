@@ -43,7 +43,11 @@ def get_book_url(links):  # links 의 값에 best_page, month_page, steady_page 
                     continue
                 link = book.get("href")  # href 속성 값 (책 소개페이지 링크)
                 rank = ranks.get_text() # 순위 
-                result_list.append(('https://www.yes환
+                result_list.append((link,rank))
+                
+            return result_list
+        
+
 
 async def get_book_info(url, session): 
     async with session.get(url[0]) as res: # result_list = ('https://www.yes24.com/'+link,int(rank))  url 값만 가져오기 위해서 index [0]값을 호출
@@ -83,7 +87,7 @@ async def get_book_info(url, session):
                         continue
                     if len(cd) > 1:
                         category_datas[cd_i]=cd.strip().split('>')[0] #cd의 길이가 1보다 큰경우 cd의 양쪽 끝 공백을 제거하고,
-                                                                      #'>' 문자열을 기준으로 분할한 후 첫 번째 요소를 category_datas의 cd_i 인덱스에 저장
+                                                                    #'>' 문자열을 기준으로 분할한 후 첫 번째 요소를 category_datas의 cd_i 인덱스에 저장
                         try:
                             category_datas[cd_i+1]=cd.strip().split('>')[1] # cd를 '>' 문자열을 기준으로 분할한 후 두 번째 요소를 category_datas의 cd_i+1 인덱스에 저장
 
