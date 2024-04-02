@@ -39,15 +39,11 @@ def get_book_url(links):  # links 의 값에 best_page, month_page, steady_page 
             book_list = soup.select(book_selector) # soup에 book_selector을 넣어서 book_list를 뽑아온다. 책의 고유주소를 뽑아온다
             rank_list = soup.select(rank_selector)# soup에 rank_selector을 넣어서 rank_list를 뽑아온다. 책 순위를 뽑아온다.
             for book, ranks, cover in zip(book_list, rank_list, cover_list): # zip을 사용해서 3개의 리스트를 for문으로 돌린다.
-                if cover.get("data-original") == "https://image.yes24.com/momo/PD_19_L.gif": # data-original값이 나오면 다음 작업으로 넘어간다.
+                if cover.get("data-original") == "https://image.yes24.com/momo/PD_19_L.gif": # data-original값이 성인제한 이미지로 나오면 다음 작업으로 넘어간다.
                     continue
-                link = book.get("href")  # href 속성 값 (이미지의 고유값)
+                link = book.get("href")  # href 속성 값 (책 소개페이지 링크)
                 rank = ranks.get_text() # 순위 
-                result_list.append(('https://www.yes24.com/'+link,int(rank))) 
-
-        else: 
-            raise Exception(f"요청 실패. 응답코드: {res.status_code}") 
-    return result_list
+                result_list.append(('https://www.yes환
 
 async def get_book_info(url, session): 
     async with session.get(url[0]) as res: # result_list = ('https://www.yes24.com/'+link,int(rank))  url 값만 가져오기 위해서 index [0]값을 호출
