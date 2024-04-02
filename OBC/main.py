@@ -43,10 +43,11 @@ def get_book_url(links):  # links 의 값에 best_page, month_page, steady_page 
                     continue
                 link = book.get("href")  # href 속성 값 (책 소개페이지 링크)
                 rank = ranks.get_text() # 순위 
-                result_list.append((link,rank))
-                
-            return result_list
-        
+                result_list.append(('https://www.yes24.com/'+link,int(rank)))
+
+        else:
+            raise Exception(f"요청 실패. 응답코드: {res.status_code}")
+    return result_list
 
 
 async def get_book_info(url, session): 
