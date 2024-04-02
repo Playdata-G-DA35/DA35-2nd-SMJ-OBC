@@ -27,19 +27,24 @@ price_selector = "#yDetailTopWrap > div.topColRgt > div.gd_infoBot > div.gd_info
 category_selector = '#infoset_goodsCate > div.infoSetCont_wrap > dl:nth-child(1) > dd > ul'
 introduce_selector = '#infoset_introduce > div.infoSetCont_wrap'
 
+cover_selector = "#yesBestList > li > div > div.item_img > div.img_canvas > span > span > a > em > img"
+
 def get_book_url(links):
-    for l in links:     
+    result_list = []
+    for l in links: 
         res = requests.get(l, headers={"user-agent":user_agent})
         if res.status_code == 200:
             soup = BeautifulSoup(res.text, "lxml")
+            cover_list = soup.select(cover_selector)
             book_list = soup.select(book_selector)
             rank_list = soup.select(rank_selector)
-            result_list = []
-            for book, ranks in zip(book_list, rank_list):
+            for book, ranks, cover in zip(book_list, rank_list, cover_list):
+                if cover.get("data-original") == "https://image.yes24.com/momo/PD_19_L.gif":
+                    continue
                 link = book.get("href")  # href 속성 값
                 rank = ranks.get_text()
                 result_list.append(('https://www.yes24.com/'+link,int(rank)))
-        
+
         else:
             raise Exception(f"요청 실패. 응답코드: {res.status_code}")
     return result_list
@@ -75,13 +80,18 @@ async def get_book_info(url, session):
                 category_data = cl.get_text().strip()
                 for r in remove_list:
                     category_data = category_data.replace(r,'')
+                temp_c = category_data.split('국내도서>')
                 cd_i = 0
-                for cd in category_data.split('국내도서>'):
+                for cd in temp_c:
                     if cd_i == 4:
                         continue
                     if len(cd) > 1:
                         category_datas[cd_i]=cd.strip().split('>')[0]
-                        category_datas[cd_i+1]=cd.strip().split('>')[1]
+                        try:
+                            category_datas[cd_i+1]=cd.strip().split('>')[1]
+                        except:
+                            cd_i += 2
+                            continue
                         cd_i += 2
 
             introduce_list = soup.select(introduce_selector)
@@ -97,7 +107,7 @@ async def get_book_info(url, session):
 
             result_list = [pk, rank, book_name, auth_list[0], publish, date, int(pricese[0]), int(pricese[1]), *category_datas, introduce_datas[0]]
             
-            #time.sleep(random.random()*3)
+            print("처리완료 : ", pk)
             return result_list
         else:
             raise Exception(f"요청 실패. 응답코드: {res.status_code}")
@@ -114,23 +124,28 @@ if __name__ == '__main__':
     os.makedirs('Datas/best_seller_datas', exist_ok=True)
     os.makedirs('Datas/month_seller_datas', exist_ok=True)
     os.makedirs('Datas/steady_seller_datas', exist_ok=True)
+
+    t = time.time()
+    print("작업 시작")
     
-    best_pages = ['https://www.yes24.com/Product/Category/BestSeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,4)]
+    best_pages = ['https://www.yes24.com/Product/Category/BestSeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,21)]
     best_seller_links = get_book_url(best_pages)
     best_seller_datas = asyncio.run(main(best_seller_links))
     best_df = pd.DataFrame(best_seller_datas)
 
-    month_pages = ['https://www.yes24.com/Product/Category/MonthWeekBestSeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,4)]
+    month_pages = ['https://www.yes24.com/Product/Category/MonthWeekBestSeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,21)]
     month_seller_links = get_book_url(month_pages)
     month_seller_datas = asyncio.run(main(month_seller_links))
     month_df = pd.DataFrame(month_seller_datas)
 
-    steady_pages = ['https://www.yes24.com/Product/Category/SteadySeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,4)]
+    steady_pages = ['https://www.yes24.com/Product/Category/SteadySeller?categoryNumber=001&pageNumber='+str(x)+'&pageSize=25' for x in range(1,21)]
     steady_seller_links = get_book_url(steady_pages)
     steady_seller_datas = asyncio.run(main(steady_seller_links))
     steady_df = pd.DataFrame(steady_seller_datas)
 
-    ##### 파일로 저장.
+    e = time.time()
+    print("작업 완료, 소요 시간: ",e-t)
+
 
     d = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -143,31 +158,18 @@ if __name__ == '__main__':
     steady_file_path = f"Datas/steady_seller_datas/{d}.csv"
     steady_df.to_csv(steady_file_path, index=False)
 
-<<<<<<< HEAD
-    from sqlalchemy import create_engine
-    import pandas as pd
+    if input("DB갱신: Y입력") == 'Y':
+        from sqlalchemy import create_engine
 
-    db_connection_str = 'mysql+pymysql://playdata:1111@127.0.0.1:3306/obc'
-    db_connection = create_engine(db_connection_str)
-    conn = db_connection.connect()
-    columns_name = ['책ID','순위','책제목','작가','출판사','출판일','정가','판매가','카테고리1-1','카테고리1-2','카테고리2-1','카테고리2-2','책소개']
-    best_df.columns = columns_name
-    best_df.to_sql(name='best_obc', con=db_connection, if_exists='replace',index=False )
-    month_df.columns = columns_name
-    month_df.to_sql(name='month_obc', con=db_connection, if_exists='replace',index=False )
-    steady_df.columns = columns_name
-    steady_df.to_sql(name='steady_obc', con=db_connection, if_exists='replace',index=False )
+        db_connection_str = 'mysql+pymysql://playdata:1111@127.0.0.1:3306/obc'
+        db_connection = create_engine(db_connection_str)
+        conn = db_connection.connect()
+        columns_name = ['책ID','순위','책제목','작가','출판사','출판일','정가','판매가','카테고리1_1','카테고리1_2','카테고리2_1','카테고리2_2','책소개']
+        best_df.columns = columns_name
+        best_df.to_sql(name='best_obc', con=db_connection, if_exists='replace',index=False )
+        month_df.columns = columns_name
+        month_df.to_sql(name='month_obc', con=db_connection, if_exists='replace',index=False )
+        steady_df.columns = columns_name
+        steady_df.to_sql(name='steady_obc', con=db_connection, if_exists='replace',index=False )
 
-=======
-    
-from sqlalchemy import create_engine
-import pymysql
-import pandas as pd
-db_connection_str = 'mysql+pymysql://playdata:1111@127.0.0.1:3306/obc'
-db_connection = create_engine(db_connection_str)
-conn = db_connection.connect()
-columns_name = ['책ID','순위','책제목','작가','출판사','출판일','정가','판매가','카테고리1-1','카테고리1-2','카테고리2-1','카테고리2-2','책소개']
-best_df.columns = columns_name
-best_df.to_sql(name='best_obc', con=db_connection, if_exists='replace',index=False )  
->>>>>>> 5335d9fb9963cfac9d0467546f8ecfd4afce3921
 
